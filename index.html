@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quality Monitoring System | Continuous Environmental Analysis</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Local Chart.js with CDN fallback for reliable local & offline execution -->
+  <script src="lib/chart.umd.min.js"></script>
+  <script>
+    if (typeof Chart === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"><\/script>');
+    }
+  </script>
+</head>
+<body>
+
+  <div class="container">
+    <!-- ==========================================
+         TOP HEADER & STATUS SECTION
+         ========================================== -->
+    <header class="header-top">
+      <div class="brand-section">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+        </div>
+        <div class="title-wrap">
+          <h1>Quality Monitoring System</h1>
+          <p class="subtitle">Continuous Analysis of Temperature, Humidity, and Harmful Gas Concentrations Using Wi-Fi Communication & Cloud Services</p>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <!-- Prominent Simulation Badge -->
+        <span class="badge-simulated-flag" title="Hardware is not connected. Local synthetic telemetry is being generated.">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          SIMULATED SENSOR DATA (ESP32 Disconnected)
+        </span>
+
+        <!-- System Connection Status -->
+        <span id="connStatusBadge" class="status-badge status-badge-active">
+          <span id="connStatusDot" class="status-dot dot-active"></span>
+          <span id="connStatusText">Simulated Monitoring Active</span>
+        </span>
+      </div>
+    </header>
+
+    <!-- ==========================================
+         SIMULATION NOTICE & CLOUD STATUS BANNER
+         ========================================== -->
+    <div class="simulation-banner">
+      <div class="simulation-banner-text">
+        <strong>⚠️ Synthetic Telemetry Notice:</strong> The ESP32 simulation in Mokxi / Wokwi is not yet connected to this dashboard. All telemetry values below are generated via a local realistic physical sensor simulator for threshold and UI testing. Real cloud services will be engaged once physical or simulated Wi-Fi transport is active.
+      </div>
+      <button id="btnOpenCloudGuide" class="banner-link" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 16v-4M12 8h.01"></path>
+        </svg>
+        ESP32 & Cloud Integration Guide
+      </button>
+    </div>
+
+    <!-- ==========================================
+         TOOLBAR & MONITORING CONTROLS
+         ========================================== -->
+    <div class="toolbar">
+      <!-- Start / Stop Monitoring Controls -->
+      <div class="toolbar-group">
+        <button id="btnStartMonitoring" class="btn btn-success" type="button" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          Start Monitoring
+        </button>
+
+        <button id="btnStopMonitoring" class="btn btn-danger" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="6" y="6" width="12" height="12"></rect>
+          </svg>
+          Stop Monitoring
+        </button>
+
+        <span class="control-label" style="margin-left: 0.5rem;">Rate:</span>
+        <select id="selectInterval" class="select-input" title="Polling sampling frequency">
+          <option value="1000">1.0 sec</option>
+          <option value="2000" selected>2.0 sec</option>
+          <option value="3000">3.0 sec</option>
+          <option value="5000">5.0 sec</option>
+        </select>
+      </div>
+
+      <!-- Threshold Testing & Simulation Injection -->
+      <div class="toolbar-group">
+        <span class="control-label">Test Alert:</span>
+        <button id="btnSpikeGas" class="btn btn-warning btn-sm" type="button" title="Simulate a sudden harmful gas leak to trigger warning thresholds">
+          ⚡ Gas Hazard Spike
+        </button>
+        <button id="btnSpikeTemp" class="btn btn-outline btn-sm" type="button" title="Simulate a high temperature reading to trigger thermal alert">
+          🌡️ Temp Spike
+        </button>
+      </div>
+
+      <!-- Actions, Settings & Utilities -->
+      <div class="toolbar-group">
+        <button id="btnOpenSettings" class="btn btn-primary btn-sm" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          Configure Thresholds
+        </button>
+
+        <button id="btnToggleAudio" class="btn btn-outline btn-sm" type="button" aria-pressed="false" title="Toggle audio alarms for threshold breaches">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+          Audio Alerts: OFF
+        </button>
+
+        <button id="btnExportCsv" class="btn btn-outline btn-sm" type="button" title="Export readings history to CSV file">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Export CSV
+        </button>
+
+        <button id="btnToggleTheme" class="btn btn-outline btn-sm" type="button" title="Switch light/dark theme">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          Light Mode
+        </button>
+      </div>
+    </div>
+
+    <!-- Telemetry status meta bar -->
+    <div class="telemetry-strip">
+      <div class="telemetry-item">
+        <span>Last Updated:</span>
+        <strong id="lastUpdatedTime">--:--:--</strong>
+      </div>
+      <div class="telemetry-item">
+        <span>Packets Processed:</span>
+        <strong id="packetCount">0</strong>
+      </div>
+      <div class="telemetry-item">
+        <span>Wi-Fi Status:</span>
+        <strong id="rssiValue">Simulated (-62 dBm)</strong>
+      </div>
+      <div class="telemetry-item">
+        <span>ESP32 Hardware:</span>
+        <strong style="color: #f59e0b;">Disconnected (Simulated Stream)</strong>
+      </div>
+      <div class="telemetry-item">
+        <span>Cloud Services:</span>
+        <strong style="color: var(--text-secondary);">Standby (Local Client Only)</strong>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         PRIMARY KPI CARDS (TEMP, HUMIDITY, GAS)
+         ========================================== -->
+    <section class="kpi-grid">
+      <!-- 1. Temperature Card -->
+      <div id="cardTemp" class="kpi-card card-temp card-normal">
+        <div class="kpi-header">
+          <span class="kpi-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--temp-color)" stroke-width="2">
+              <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+            </svg>
+            Temperature
+          </span>
+          <span id="tempStatus" class="kpi-status-badge badge-status-normal">Normal</span>
+        </div>
+        <div class="kpi-body">
+          <span id="tempValue" class="kpi-value">--.-</span>
+          <span class="kpi-unit">°C</span>
+        </div>
+        <div class="kpi-footer">
+          <span id="displayTempThresh" class="kpi-threshold-info">Alert: > 32.0°C | < 18.0°C</span>
+        </div>
+        <div class="kpi-footer" style="margin-top: 0.35rem; padding-top: 0.35rem; border: none;">
+          <span id="tempStats" class="kpi-threshold-info">Min: -- | Max: -- | Avg: --</span>
+        </div>
+      </div>
+
+      <!-- 2. Relative Humidity Card -->
+      <div id="cardHumidity" class="kpi-card card-humidity card-normal">
+        <div class="kpi-header">
+          <span class="kpi-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--humidity-color)" stroke-width="2">
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+            </svg>
+            Relative Humidity
+          </span>
+          <span id="humidityStatus" class="kpi-status-badge badge-status-normal">Normal</span>
+        </div>
+        <div class="kpi-body">
+          <span id="humidityValue" class="kpi-value">--.-</span>
+          <span class="kpi-unit">%</span>
+        </div>
+        <div class="kpi-footer">
+          <span id="displayHumThresh" class="kpi-threshold-info">Alert: > 70.0% | < 30.0%</span>
+        </div>
+        <div class="kpi-footer" style="margin-top: 0.35rem; padding-top: 0.35rem; border: none;">
+          <span id="humidityStats" class="kpi-threshold-info">Min: -- | Max: -- | Avg: --</span>
+        </div>
+      </div>
+
+      <!-- 3. Harmful Gas Concentration Card (Raw Values) -->
+      <div id="cardGas" class="kpi-card card-gas card-normal">
+        <div class="kpi-header">
+          <span class="kpi-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gas-color)" stroke-width="2">
+              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+            </svg>
+            Harmful Gas Sensor
+          </span>
+          <span id="gasStatus" class="kpi-status-badge badge-status-normal">Air Quality Good</span>
+        </div>
+        <div class="kpi-body">
+          <span id="gasValue" class="kpi-value">----</span>
+          <span class="kpi-unit-raw" title="12-bit ESP32 ADC Raw Value range (0 to 4095)">Raw ADC (0–4095)</span>
+        </div>
+        <div class="kpi-footer">
+          <span id="displayGasThresh" class="kpi-threshold-info">Warn: ≥ 1200 | Crit: ≥ 2200</span>
+        </div>
+        <div class="kpi-footer" style="margin-top: 0.35rem; padding-top: 0.35rem; border: none;">
+          <span id="gasStats" class="kpi-threshold-info">Min: -- | Max: -- | Avg: --</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SEPARATE LIVE-UPDATING LINE CHARTS
+         ========================================== -->
+    <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+      <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Live Telemetry Trends</h2>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span class="control-label">Window:</span>
+        <select id="selectPoints" class="select-input" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+          <option value="15">15 points</option>
+          <option value="25" selected>25 points</option>
+          <option value="50">50 points</option>
+          <option value="100">100 points</option>
+        </select>
+      </div>
+    </div>
+
+    <section class="charts-grid">
+      <!-- Chart 1: Temperature Line Chart -->
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <span class="chart-card-title">
+            <span class="chart-indicator-pill pill-temp"></span>
+            Temperature Trend (°C)
+          </span>
+          <span class="chart-card-meta">Live Stream</span>
+        </div>
+        <div class="chart-container-wrap">
+          <canvas id="tempChartCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: Relative Humidity Line Chart -->
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <span class="chart-card-title">
+            <span class="chart-indicator-pill pill-humidity"></span>
+            Humidity Trend (%)
+          </span>
+          <span class="chart-card-meta">Live Stream</span>
+        </div>
+        <div class="chart-container-wrap">
+          <canvas id="humidityChartCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: Harmful Gas Sensor Line Chart (Raw Values) -->
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <span class="chart-card-title">
+            <span class="chart-indicator-pill pill-gas"></span>
+            Harmful Gas Trend (Raw ADC)
+          </span>
+          <span class="chart-card-meta">Live Stream</span>
+        </div>
+        <div class="chart-container-wrap">
+          <canvas id="gasChartCanvas"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         BOTTOM SPLIT: ALERTS LOG & HISTORY TABLE
+         ========================================== -->
+    <section class="bottom-grid">
+      <!-- Left: Warning & Alerts Feed -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            Active Alerts & Log
+            <span id="alertBadgeCount" class="badge-count">0</span>
+          </div>
+          <button id="btnClearAlerts" class="btn btn-outline btn-sm" type="button">Clear</button>
+        </div>
+
+        <div id="alertList" class="alerts-container">
+          <div class="empty-state">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <path d="M9 12l2 2 4-4"></path>
+            </svg>
+            <p>No active warning alerts. All sensor parameters within configured thresholds.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Historical Telemetry Table -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Previous Readings History
+          </div>
+          <button id="btnClearHistory" class="btn btn-outline btn-sm" type="button">Clear History</button>
+        </div>
+
+        <div class="table-toolbar">
+          <input id="historySearch" class="text-input" type="text" placeholder="Filter readings (e.g. Alert, Normal, 26.5)..." style="max-width: 320px; width: 100%;">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Showing recent buffer (max 100 readings)</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Packet</th>
+                <th>Timestamp</th>
+                <th>Temperature</th>
+                <th>Humidity</th>
+                <th>Gas Sensor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <tr>
+                <td colspan="6" class="table-empty">Initializing sensor telemetry...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ==========================================
+       MODAL 1: CONFIGURE THRESHOLDS
+       ========================================== -->
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          Configure Sensor Alarm Thresholds
+        </h3>
+        <button id="btnCloseSettings" class="modal-close" type="button">&times;</button>
+      </div>
+
+      <form id="formThresholds">
+        <div class="modal-body">
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+            When simulated or live sensor telemetry crosses these safety boundaries, warning notifications and auditory alarms will be triggered.
+          </p>
+
+          <div class="form-grid">
+            <!-- Temperature Section -->
+            <div class="form-section-title">🌡️ Temperature Thresholds (°C)</div>
+            <div class="form-group">
+              <label for="inputTempMax">High Alert Threshold (°C)</label>
+              <input id="inputTempMax" class="text-input" type="number" step="0.5" required>
+              <span class="form-help">Trigger alert when Temp > this limit</span>
+            </div>
+            <div class="form-group">
+              <label for="inputTempMin">Low Warning Threshold (°C)</label>
+              <input id="inputTempMin" class="text-input" type="number" step="0.5" required>
+              <span class="form-help">Trigger warning when Temp < this limit</span>
+            </div>
+
+            <!-- Humidity Section -->
+            <div class="form-section-title">💧 Humidity Thresholds (%)</div>
+            <div class="form-group">
+              <label for="inputHumidityMax">High Alert Threshold (%)</label>
+              <input id="inputHumidityMax" class="text-input" type="number" step="1" min="0" max="100" required>
+              <span class="form-help">Trigger warning when Humidity > this limit</span>
+            </div>
+            <div class="form-group">
+              <label for="inputHumidityMin">Low Warning Threshold (%)</label>
+              <input id="inputHumidityMin" class="text-input" type="number" step="1" min="0" max="100" required>
+              <span class="form-help">Trigger warning when Humidity < this limit</span>
+            </div>
+
+            <!-- Gas Section (Raw Values) -->
+            <div class="form-section-title">⚠️ Harmful Gas Concentration (Raw ADC 0–4095)</div>
+            <div class="form-group">
+              <label for="inputGasWarning">Warning Threshold (Raw ADC)</label>
+              <input id="inputGasWarning" class="text-input" type="number" step="10" min="0" max="4095" required>
+              <span class="form-help">Elevated gas presence indicator</span>
+            </div>
+            <div class="form-group">
+              <label for="inputGasCritical">Critical Alert Threshold (Raw ADC)</label>
+              <input id="inputGasCritical" class="text-input" type="number" step="10" min="0" max="4095" required>
+              <span class="form-help">Hazardous gas concentration limit</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="btnResetDefaults" class="btn btn-outline" type="button">Reset to Defaults</button>
+          <button type="submit" class="btn btn-primary">Save & Apply Thresholds</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL 2: ESP32 & CLOUD INTEGRATION GUIDE
+       ========================================== -->
+  <div id="cloudGuideModal" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+          </svg>
+          ESP32 & Cloud Integration Roadmap
+        </h3>
+        <button id="btnCloseCloudGuide" class="modal-close" type="button">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="guide-step">
+          <h4>1. Current Status: Synthetic Testbed Mode</h4>
+          <p>
+            The dashboard is currently running in a zero-dependency local simulation mode. All data values (Temperature in °C, Humidity in %, and Gas Sensor in Raw ADC values) are synthetically generated so you can evaluate the user interface, line charts, thresholds, and alarm logs without needing the physical microcontroller or Mokxi setup online.
+          </p>
+        </div>
+
+        <div class="guide-step">
+          <h4>2. Expected Telemetry Payload Specification</h4>
+          <p>
+            When your ESP32 simulation in Mokxi/Wokwi or physical ESP32 board is ready, configure it to publish JSON payloads in the following format:
+          </p>
+          <div class="code-block">
+{
+  "device_id": "ESP32_ENV_NODE_01",
+  "temperature": 26.4,      // °C (from DHT22 or BME280)
+  "humidity": 54.2,         // % Relative Humidity
+  "gas_raw": 680,           // 12-bit ADC raw integer (0-4095) from MQ-135/MQ-2
+  "wifi_rssi": -65,         // dBm
+  "timestamp": 1728918230   // Unix epoch seconds
+}</div>
+        </div>
+
+        <div class="guide-step">
+          <h4>3. Communication Protocols</h4>
+          <p>
+            You can transmit this payload via:
+          </p>
+          <ul style="font-size: 0.82rem; color: var(--text-secondary); margin-left: 1.25rem; margin-top: 0.35rem; line-height: 1.6;">
+            <li><strong>MQTT over WebSockets:</strong> Connect directly to HiveMQ Cloud, Adafruit IO, or EMQX broker.</li>
+            <li><strong>HTTP REST / Webhook:</strong> Use ESP32 HTTPClient library to POST readings to a cloud endpoint (e.g. Firebase, ThingSpeak, or a lightweight Node.js/Python server).</li>
+            <li><strong>ESP32 Local Web Server:</strong> Host the dashboard directly on the ESP32 SPIFFS/LittleFS or serve SSE (Server-Sent Events) on the local Wi-Fi IP address.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnCloseCloudGuideBottom" class="btn btn-primary" type="button" onclick="document.getElementById('cloudGuideModal').classList.remove('modal-open');">
+          Got It
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="js/simulator.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
